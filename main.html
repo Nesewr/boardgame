@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>원소 배틀 ⚛ Element Battle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070b12; --bg2:#0c1322; --line:rgba(120,160,220,.10);
+    --panel:rgba(255,255,255,.045); --panel-bd:rgba(150,180,230,.14);
+    --text:#e9eef8; --muted:#8693ab;
+    --metal:#f4a83a; --nonmetal:#2dd4a7; --noble:#b06bf2; --metalloid:#38bdf8;
+    --hp:#ff5577; --hp2:#ff97ad; --gold:#ffd56b;
+    --shadow:0 18px 50px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Noto Sans KR',sans-serif; color:var(--text);
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(176,107,242,.10), transparent 60%),
+      radial-gradient(1000px 600px at 0% 110%, rgba(45,212,167,.09), transparent 60%),
+      linear-gradient(180deg,var(--bg) 0%, var(--bg2) 100%);
+    background-attachment:fixed;
+    min-height:100%;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.5; z-index:0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:46px 46px;
+    mask-image:radial-gradient(circle at 50% 40%, #000 0%, transparent 85%);
+  }
+  .wrap{position:relative; z-index:1; max-width:1080px; margin:0 auto; padding:14px 14px 30px}
+
+  /* ===== Header ===== */
+  header{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 2px 14px}
+  .brand{display:flex; align-items:baseline; gap:10px}
+  .brand .atom{font-family:'Orbitron'; font-weight:900; font-size:26px; color:var(--gold);
+    text-shadow:0 0 18px rgba(255,213,107,.5)}
+  .brand h1{font-family:'Black Han Sans'; font-size:26px; letter-spacing:.5px}
+  .brand small{display:block; font-family:'Orbitron'; font-size:10px; letter-spacing:3px; color:var(--muted); font-weight:500}
+  .hbtns{display:flex; gap:8px}
+  .hbtn{background:var(--panel); border:1px solid var(--panel-bd); color:var(--text);
+    border-radius:10px; padding:8px 12px; font-size:13px; cursor:pointer; font-family:'Noto Sans KR'; font-weight:500; transition:.15s}
+  .hbtn:hover{border-color:var(--gold); color:var(--gold)}
+
+  /* ===== Player panels ===== */
+  .panel{background:var(--panel); border:1px solid var(--panel-bd); border-radius:16px; padding:14px 16px; backdrop-filter:blur(6px)}
+  .pinfo{display:flex; align-items:center; gap:14px}
+  .avatar{width:46px; height:46px; border-radius:12px; display:grid; place-items:center; font-size:24px; flex:0 0 auto;
+    background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.01)); border:1px solid var(--panel-bd)}
+  .pmeta{flex:1; min-width:0}
+  .pname{font-weight:700; font-size:15px; display:flex; align-items:center; gap:8px}
+  .badges{display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; min-height:20px}
+  .badge{font-size:11px; padding:2px 8px; border-radius:999px; font-weight:700; display:inline-flex; align-items:center; gap:4px}
+  .badge.shield{background:rgba(56,189,248,.15); color:var(--metalloid); border:1px solid rgba(56,189,248,.4)}
+  .badge.noble{background:rgba(176,107,242,.15); color:var(--noble); border:1px solid rgba(176,107,242,.45)}
+  .badge.deck{background:rgba(255,255,255,.06); color:var(--muted); border:1px solid var(--panel-bd)}
+
+  .hpbar{position:relative; height:22px; border-radius:999px; background:rgba(0,0,0,.35);
+    border:1px solid var(--panel-bd); overflow:hidden; margin-top:8px}
+  .hpfill{position:absolute; inset:0; width:100%; border-radius:999px;
+    background:linear-gradient(90deg,var(--hp),var(--hp2)); transition:width .5s cubic-bezier(.2,.8,.2,1)}
+  .hptext{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Orbitron'; font-weight:700; font-size:13px; text-shadow:0 1px 4px rgba(0,0,0,.7); letter-spacing:1px}
+
+  .turnbar{text-align:center; margin:14px 0 8px; min-height:24px}
+  .turnbar .t{font-family:'Black Han Sans'; font-size:15px; letter-spacing:1px}
+  .turnbar .you{color:var(--nonmetal)} .turnbar .cpu{color:var(--metal)}
+
+  /* opponent hand (face down) */
+  .ohand{display:flex; justify-content:center; gap:6px; margin-top:12px; min-height:54px}
+  .cardback{width:38px; height:52px; border-radius:8px; flex:0 0 auto;
+    background:repeating-linear-gradient(45deg,#10182a,#10182a 6px,#15203a 6px,#15203a 12px);
+    border:1px solid rgba(150,180,230,.25); display:grid; place-items:center; color:rgba(255,213,107,.55); font-size:18px;
+    box-shadow:inset 0 0 14px rgba(0,0,0,.5)}
+
+  /* ===== Log ===== */
+  #log{background:rgba(0,0,0,.28); border:1px solid var(--panel-bd); border-radius:14px; padding:10px 14px;
+    height:108px; overflow-y:auto; font-size:13px; line-height:1.7; margin:12px 0}
+  #log .line{opacity:0; animation:fadein .35s forwards}
+  #log b.dmg{color:var(--hp)} #log b.heal{color:var(--nonmetal)} #log b.def{color:var(--metalloid)}
+  #log b.you{color:var(--nonmetal)} #log b.cpu{color:var(--metal)}
+  @keyframes fadein{to{opacity:1}}
+
+  /* ===== Player hand ===== */
+  .handlabel{display:flex; justify-content:space-between; align-items:center; margin:6px 2px}
+  .handlabel .h{font-family:'Black Han Sans'; font-size:14px; color:var(--gold); letter-spacing:1px}
+  .handlabel .h small{font-family:'Noto Sans KR'; color:var(--muted); font-weight:400; font-size:11px; margin-left:6px}
+  .hand{display:flex; gap:10px; overflow-x:auto; padding:8px 2px 14px; scroll-snap-type:x proximity}
+
+  /* ===== Element card ===== */
+  .card{position:relative; flex:0 0 auto; width:104px; height:144px; border-radius:14px; cursor:pointer;
+    background:linear-gradient(160deg, var(--c-bg1), var(--c-bg2));
+    border:1.5px solid var(--c-line); padding:10px 9px; scroll-snap-align:center;
+    transition:transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s, opacity .2s;
+    box-shadow:0 8px 20px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.03)}
+  .card.metal{--c-bg1:rgba(244,168,58,.16); --c-bg2:rgba(244,168,58,.03); --c-line:rgba(244,168,58,.55); --c:var(--metal)}
+  .card.nonmetal{--c-bg1:rgba(45,212,167,.16); --c-bg2:rgba(45,212,167,.03); --c-line:rgba(45,212,167,.5); --c:var(--nonmetal)}
+  .card.noble{--c-bg1:rgba(176,107,242,.18); --c-bg2:rgba(176,107,242,.03); --c-line:rgba(176,107,242,.55); --c:var(--noble)}
+  .card.metalloid{--c-bg1:rgba(56,189,248,.16); --c-bg2:rgba(56,189,248,.03); --c-line:rgba(56,189,248,.5); --c:var(--metalloid)}
+  .card:hover{transform:translateY(-12px) scale(1.04); box-shadow:0 18px 36px rgba(0,0,0,.55), 0 0 24px var(--c-line)}
+  .card.disabled{opacity:.4; cursor:not-allowed; filter:grayscale(.4)}
+  .card.disabled:hover{transform:none; box-shadow:0 8px 20px rgba(0,0,0,.4)}
+  .card.combo{outline:2px dashed var(--gold); outline-offset:2px}
+  .card .z{position:absolute; top:8px; left:10px; font-family:'Orbitron'; font-weight:700; font-size:13px; color:var(--c)}
+  .card .pd{position:absolute; top:8px; right:10px; font-size:9.5px; color:var(--muted); text-align:right; line-height:1.25}
+  .card .pd b{color:var(--c); font-family:'Orbitron'}
+  .card .sym{font-family:'Orbitron'; font-weight:900; font-size:40px; text-align:center; margin-top:30px; color:#fff; text-shadow:0 0 18px var(--c-line)}
+  .card .nm{text-align:center; font-size:12px; font-weight:700; margin-top:2px}
+  .card .en{text-align:center; font-size:8.5px; color:var(--muted); letter-spacing:.5px; text-transform:uppercase}
+  .card .fx{position:absolute; bottom:8px; left:8px; right:8px; text-align:center; font-size:10.5px; font-weight:700;
+    color:var(--c); background:rgba(0,0,0,.3); border:1px solid var(--c-line); border-radius:8px; padding:3px 4px}
+
+  /* ===== Controls ===== */
+  .controls{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:6px}
+  .btn{font-family:'Noto Sans KR'; font-weight:700; border:none; border-radius:12px; padding:11px 18px; font-size:14px; cursor:pointer;
+    transition:.15s; display:inline-flex; align-items:center; gap:7px}
+  .btn:disabled{opacity:.35; cursor:not-allowed}
+  .btn.water{background:linear-gradient(135deg,#2dd4a7,#1aa3c9); color:#04221c}
+  .btn.water:not(:disabled):hover{transform:translateY(-2px); box-shadow:0 10px 24px rgba(45,212,167,.4)}
+  .btn.pass{background:var(--panel); border:1px solid var(--panel-bd); color:var(--text)}
+  .btn.pass:not(:disabled):hover{border-color:var(--gold); color:var(--gold)}
+
+  /* ===== Float text on play ===== */
+  .floater{position:fixed; z-index:50; font-family:'Orbitron'; font-weight:900; font-size:34px; pointer-events:none;
+    animation:floatup 1s ease-out forwards; text-shadow:0 2px 12px rgba(0,0,0,.8)}
+  @keyframes floatup{0%{opacity:0; transform:translate(-50%,0) scale(.6)}20%{opacity:1}100%{opacity:0; transform:translate(-50%,-90px) scale(1.2)}}
+  .hitflash{animation:flash .4s}
+  @keyframes flash{0%,100%{filter:none}40%{filter:brightness(2.2) saturate(.4)}}
+  .shake{animation:shake .35s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
+
+  /* ===== Overlays ===== */
+  .overlay{position:fixed; inset:0; z-index:100; background:rgba(4,7,13,.86); backdrop-filter:blur(8px);
+    display:none; align-items:center; justify-content:center; padding:20px}
+  .overlay.show{display:flex}
+  .modal{max-width:560px; width:100%; max-height:86vh; overflow-y:auto; background:linear-gradient(160deg,#101a2c,#0a1018);
+    border:1px solid var(--panel-bd); border-radius:20px; padding:26px; box-shadow:var(--shadow)}
+  .modal h2{font-family:'Black Han Sans'; font-size:24px; margin-bottom:6px}
+  .modal h2 .atom{font-family:'Orbitron'; color:var(--gold); font-size:22px}
+  .modal .sub{color:var(--muted); font-size:13px; margin-bottom:18px}
+  .rule{display:flex; gap:12px; padding:11px 0; border-top:1px solid var(--line)}
+  .rule .ic{font-size:22px; flex:0 0 30px; text-align:center}
+  .rule .rt{font-size:13.5px; line-height:1.55}
+  .rule .rt b{color:var(--gold)}
+  .legend{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0}
+  .lg{display:flex; align-items:center; gap:8px; font-size:12px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.03); border:1px solid var(--line)}
+  .dot{width:12px; height:12px; border-radius:4px; flex:0 0 auto}
+  .startbtn{width:100%; margin-top:18px; padding:14px; font-family:'Black Han Sans'; font-size:18px; letter-spacing:1px;
+    background:linear-gradient(135deg,var(--gold),#ff9d3a); color:#1a1102; border:none; border-radius:14px; cursor:pointer; transition:.15s}
+  .startbtn:hover{transform:translateY(-2px); box-shadow:0 12px 30px rgba(255,213,107,.35)}
+  .closebtn{position:absolute}
+
+  .result{text-align:center}
+  .result .big{font-family:'Black Han Sans'; font-size:46px; letter-spacing:2px}
+  .result .big.win{color:var(--nonmetal); text-shadow:0 0 30px rgba(45,212,167,.5)}
+  .result .big.lose{color:var(--hp); text-shadow:0 0 30px rgba(255,85,119,.5)}
+
+  @media(max-width:560px){
+    .brand h1{font-size:21px} .brand .atom{font-size:21px}
+    .card{width:92px; height:130px} .card .sym{font-size:34px; margin-top:26px}
+    #log{height:92px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="atom">⚛</span>
+      <div><h1>원소 배틀</h1><small>ELEMENT BATTLE · Z 1–20</small></div>
+    </div>
+    <div class="hbtns">
+      <button class="hbtn" id="rulesBtn">📖 규칙</button>
+      <button class="hbtn" id="resetBtn">↻ 새 게임</button>
+    </div>
+  </header>
+
+  <!-- Opponent -->
+  <div class="panel" id="cpuPanel">
+    <div class="pinfo">
+      <div class="avatar">🤖</div>
+      <div class="pmeta">
+        <div class="pname"><span>상대 (AI)</span>
+          <span class="badges" id="cpuBadges"></span>
+        </div>
+        <div class="hpbar"><div class="hpfill" id="cpuHp"></div><div class="hptext" id="cpuHpT">20 / 20</div></div>
+      </div>
+    </div>
+    <div class="ohand" id="cpuHand"></div>
+  </div>
+
+  <div class="turnbar" id="turnbar"></div>
+  <div id="log"></div>
+
+  <!-- Player -->
+  <div class="panel" id="youPanel">
+    <div class="pinfo">
+      <div class="avatar">🧑‍🔬</div>
+      <div class="pmeta">
+        <div class="pname"><span>나</span>
+          <span class="badges" id="youBadges"></span>
+        </div>
+        <div class="hpbar"><div class="hpfill" id="youHp"></div><div class="hptext" id="youHpT">20 / 20</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="handlabel">
+    <div class="h">내 손패 <small id="handHint">카드를 눌러 사용 (턴당 1장)</small></div>
+  </div>
+  <div class="hand" id="youHand"></div>
+
+  <div class="controls">
+    <button class="btn water" id="waterBtn" disabled>💧 물(H₂O) 합성 · HP +2</button>
+    <button class="btn pass" id="passBtn">⏭ 턴 넘기기</button>
+  </div>
+</div>
+
+<!-- Rules / Start overlay -->
+<div class="overlay show" id="startOverlay">
+  <div class="modal">
+    <h2><span class="atom">⚛</span> 원소 배틀</h2>
+    <div class="sub">주기율표 1~20번 원소의 성질로 싸우는 1:1 턴제 전략 카드 게임</div>
+
+    <div class="legend">
+      <div class="lg"><span class="dot" style="background:var(--metal)"></span><b style="color:var(--metal)">금속</b> · 공격 (주기=공격력)</div>
+      <div class="lg"><span class="dot" style="background:var(--nonmetal)"></span><b style="color:var(--nonmetal)">비금속</b> · 방어막</div>
+      <div class="lg"><span class="dot" style="background:var(--noble)"></span><b style="color:var(--noble)">비활성기체</b> · 절대방어</div>
+      <div class="lg"><span class="dot" style="background:var(--metalloid)"></span><b style="color:var(--metalloid)">준금속</b> · 공격+방어</div>
+    </div>
+
+    <div class="rule"><div class="ic">❤️</div><div class="rt">서로 <b>HP 20</b>으로 시작. 상대 HP를 먼저 <b>0</b>으로 만들면 승리.</div></div>
+    <div class="rule"><div class="ic">🎴</div><div class="rt">각자 20장 덱을 섞고 <b>5장</b>으로 시작. 매 턴 시작 시 1장을 뽑고, <b>1장만 사용</b>합니다.</div></div>
+    <div class="rule"><div class="ic">⚔️</div><div class="rt"><b>금속</b>은 <b>주기 수치만큼</b> 데미지(Li·Be 2 / Na·Mg·Al 3 / K·Ca 4).</div></div>
+    <div class="rule"><div class="ic">🛡️</div><div class="rt"><b>비금속</b>은 방어막(주기만큼)을 얻어 <b>상대의 다음 공격</b>을 흡수. <b>비활성기체</b>는 다음 공격 1회를 완전히 막습니다.</div></div>
+    <div class="rule"><div class="ic">💧</div><div class="rt">손패에 <b>H + O</b>가 있으면 합성 버튼으로 <b>HP +2</b> 회복(이번 턴 사용으로 간주, 최대 20).</div></div>
+    <div class="rule"><div class="ic">⏳</div><div class="rt">방어막·특수 효과는 <b>다음 내 턴까지만</b> 유지됩니다.</div></div>
+
+    <button class="startbtn" id="startBtn">게임 시작 ▶</button>
+  </div>
+</div>
+
+<!-- Result overlay -->
+<div class="overlay" id="resultOverlay">
+  <div class="modal result">
+    <div class="big" id="resultBig"></div>
+    <p id="resultMsg" style="margin:14px 0 4px; color:var(--muted); font-size:14px"></p>
+    <button class="startbtn" id="againBtn">다시 하기 ↻</button>
+  </div>
+</div>
+
+<script>
+/* ===================== Element data (Z 1–20) ===================== */
+const ELEMENTS = [
+  {z:1,  sym:'H',  nm:'수소',     en:'Hydrogen',  period:1, cat:'nonmetal'},
+  {z:2,  sym:'He', nm:'헬륨',     en:'Helium',    period:1, cat:'noble'},
+  {z:3,  sym:'Li', nm:'리튬',     en:'Lithium',   period:2, cat:'metal'},
+  {z:4,  sym:'Be', nm:'베릴륨',   en:'Beryllium', period:2, cat:'metal'},
+  {z:5,  sym:'B',  nm:'붕소',     en:'Boron',     period:2, cat:'metalloid'},
+  {z:6,  sym:'C',  nm:'탄소',     en:'Carbon',    period:2, cat:'nonmetal'},
+  {z:7,  sym:'N',  nm:'질소',     en:'Nitrogen',  period:2, cat:'nonmetal'},
+  {z:8,  sym:'O',  nm:'산소',     en:'Oxygen',    period:2, cat:'nonmetal'},
+  {z:9,  sym:'F',  nm:'플루오린', en:'Fluorine',  period:2, cat:'nonmetal'},
+  {z:10, sym:'Ne', nm:'네온',     en:'Neon',      period:2, cat:'noble'},
+  {z:11, sym:'Na', nm:'나트륨',   en:'Sodium',    period:3, cat:'metal'},
+  {z:12, sym:'Mg', nm:'마그네슘', en:'Magnesium', period:3, cat:'metal'},
+  {z:13, sym:'Al', nm:'알루미늄', en:'Aluminium', period:3, cat:'metal'},
+  {z:14, sym:'Si', nm:'규소',     en:'Silicon',   period:3, cat:'metalloid'},
+  {z:15, sym:'P',  nm:'인',       en:'Phosphorus',period:3, cat:'nonmetal'},
+  {z:16, sym:'S',  nm:'황',       en:'Sulfur',    period:3, cat:'nonmetal'},
+  {z:17, sym:'Cl', nm:'염소',     en:'Chlorine',  period:3, cat:'nonmetal'},
+  {z:18, sym:'Ar', nm:'아르곤',   en:'Argon',     period:3, cat:'noble'},
+  {z:19, sym:'K',  nm:'칼륨',     en:'Potassium', period:4, cat:'metal'},
+  {z:20, sym:'Ca', nm:'칼슘',     en:'Calcium',   period:4, cat:'metal'},
+];
+const CATNAME = {metal:'금속',nonmetal:'비금속',noble:'비활성기체',metalloid:'준금속'};
+
+/* Effect helpers ------------------------------------------------- */
+function attackOf(e){ return e.cat==='metal' ? e.period : (e.cat==='metalloid' ? e.period-1 : 0); }
+function shieldOf(e){ return e.cat==='nonmetal' ? e.period : (e.cat==='metalloid' ? 1 : 0); }
+function fxText(e){
+  if(e.cat==='metal')     return '⚔ 공격 '+e.period;
+  if(e.cat==='noble')     return '🛡 절대방어';
+  if(e.cat==='metalloid') return '⚔'+(e.period-1)+' 🛡1';
+  return '🛡 방어 '+e.period; // nonmetal
+}
+
+/* ===================== Game state ===================== */
+const MAXHP = 20, START_HAND = 5;
+let state, busy=false;
+
+function freshDeck(){
+  const d = ELEMENTS.map(e=>({...e}));
+  for(let i=d.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function newGame(){
+  state = {
+    you:{hp:MAXHP, deck:freshDeck(), hand:[], discard:[], shield:0, noble:false},
+    cpu:{hp:MAXHP, deck:freshDeck(), hand:[], discard:[], shield:0, noble:false},
+    turn:'you', over:false
+  };
+  for(let i=0;i<START_HAND;i++){ rawDraw('you'); rawDraw('cpu'); }
+  clearLog();
+  log('게임 시작! 각자 5장을 뽑았습니다. <b class="you">당신</b>의 차례입니다.');
+  busy=false;
+  beginTurn('you', true);
+}
+
+function rawDraw(side){
+  const p = state[side];
+  if(p.deck.length===0){
+    if(p.discard.length===0) return null;
+    p.deck = p.discard; p.discard = [];
+    for(let i=p.deck.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[p.deck[i],p.deck[j]]=[p.deck[j],p.deck[i]];}
+  }
+  const c = p.deck.pop();
+  if(c) p.hand.push(c);
+  return c;
+}
+
+/* ===================== Turn flow ===================== */
+function beginTurn(side, firstTurn){
+  if(state.over) return;
+  const p = state[side];
+  // expire previous defenses at the start of own turn (효과는 다음 내 턴까지만)
+  p.shield = 0; p.noble = false;
+  if(!firstTurn){
+    const c = rawDraw(side);
+    if(c) log((side==='you'?'<b class="you">당신</b>':'<b class="cpu">상대</b>')+'이 <b>'+c.sym+'</b>('+c.nm+') 카드를 뽑았습니다.');
+    else  log((side==='you'?'<b class="you">당신</b>':'<b class="cpu">상대</b>')+'의 덱이 비어 카드를 뽑지 못했습니다.');
+  }
+  state.turn = side;
+  render();
+  if(side==='cpu'){ busy=true; setTimeout(cpuTurn, 850); }
+}
+
+function endTurn(){
+  if(state.over) return;
+  const next = state.turn==='you' ? 'cpu' : 'you';
+  beginTurn(next, false);
+}
+
+/* ===================== Actions ===================== */
+function applyDamage(targetSide, amount, srcLabel){
+  const t = state[targetSide];
+  if(t.noble){
+    t.noble = false;
+    log(srcLabel+' → '+(targetSide==='you'?'<b class="you">당신</b>':'<b class="cpu">상대</b>')
+        +'의 <b class="def">절대방어</b>가 공격을 완전히 막았습니다!');
+    flash(targetSide);
+    return;
+  }
+  let absorbed = Math.min(t.shield, amount);
+  t.shield -= absorbed;
+  let net = amount - absorbed;
+  t.hp = Math.max(0, t.hp - net);
+  let msg = srcLabel+' → ';
+  if(absorbed>0) msg += '방어막이 <b class="def">'+absorbed+'</b> 흡수, ';
+  msg += '<b class="dmg">'+net+' 데미지</b>';
+  log(msg);
+  if(net>0){ shake(targetSide); floatText(targetSide,'-'+net,'var(--hp)'); }
+  flash(targetSide);
+}
+
+function playCard(side, idx){
+  const p = state[side];
+  const c = p.hand.splice(idx,1)[0];
+  p.discard.push(c);
+  const who = side==='you'?'<b class="you">당신</b>':'<b class="cpu">상대</b>';
+  const foe = side==='you'?'cpu':'you';
+
+  if(c.cat==='metal'){
+    log(who+'이 <b>'+c.sym+'</b>('+c.nm+', '+c.period+'주기) 공격!');
+    applyDamage(foe, c.period, '⚔️ '+c.sym);
+  } else if(c.cat==='nonmetal'){
+    p.shield += c.period;
+    log(who+'이 <b>'+c.sym+'</b>('+c.nm+')로 방어막 <b class="def">+'+c.period+'</b> 획득.');
+    floatText(side,'🛡+'+c.period,'var(--metalloid)');
+  } else if(c.cat==='noble'){
+    p.noble = true;
+    log(who+'이 <b>'+c.sym+'</b>('+c.nm+')로 <b class="def">절대방어</b> 발동! 다음 공격 1회 무효화.');
+    floatText(side,'🛡∞','var(--noble)');
+  } else if(c.cat==='metalloid'){
+    p.shield += 1;
+    log(who+'이 준금속 <b>'+c.sym+'</b>('+c.nm+'): 공격 '+(c.period-1)+' + 방어막 +1.');
+    applyDamage(foe, c.period-1, '⚡ '+c.sym);
+    floatText(side,'🛡+1','var(--metalloid)');
+  }
+  checkOver();
+}
+
+function playWater(side){
+  const p = state[side];
+  const hi = p.hand.findIndex(c=>c.sym==='H');
+  const oi = p.hand.findIndex(c=>c.sym==='O');
+  if(hi<0||oi<0) return false;
+  // remove both (handle index shift)
+  const [a,b] = hi<oi ? [oi,hi] : [hi,oi];
+  const c1 = p.hand.splice(a,1)[0];
+  const c2 = p.hand.splice(b,1)[0];
+  p.discard.push(c1,c2);
+  const before = p.hp;
+  p.hp = Math.min(MAXHP, p.hp+2);
+  const who = side==='you'?'<b class="you">당신</b>':'<b class="cpu">상대</b>';
+  log('💧 '+who+'이 <b>H₂O</b> 합성! HP <b class="heal">+'+(p.hp-before)+'</b> 회복.');
+  floatText(side,'+'+(p.hp-before),'var(--nonmetal)');
+  return true;
+}
+
+/* ===================== Player input ===================== */
+function onCardClick(idx){
+  if(busy || state.over || state.turn!=='you') return;
+  busy=true;
+  playCard('you', idx);
+  render();
+  if(state.over) return;
+  setTimeout(()=>{ endTurn(); }, 650);
+}
+function onWater(){
+  if(busy || state.over || state.turn!=='you') return;
+  if(!playWater('you')) return;
+  busy=true;
+  render();
+  checkOver();
+  if(state.over) return;
+  setTimeout(()=>{ endTurn(); }, 650);
+}
+function onPass(){
+  if(busy || state.over || state.turn!=='you') return;
+  busy=true;
+  log('<b class="you">당신</b>이 턴을 넘겼습니다.');
+  render();
+  setTimeout(()=>{ endTurn(); }, 400);
+}
+
+/* ===================== AI ===================== */
+function cpuTurn(){
+  if(state.over) return;
+  const p = state.cpu, foe = state.you;
+  const hand = p.hand;
+
+  const attacks  = hand.map((c,i)=>({i,c,dmg:attackOf(c)})).filter(o=>o.dmg>0).sort((a,b)=>b.dmg-a.dmg);
+  const nobles   = hand.map((c,i)=>({i,c})).filter(o=>o.c.cat==='noble');
+  const defenses = hand.map((c,i)=>({i,c})).filter(o=>o.c.cat==='nonmetal').sort((a,b)=>b.c.period-a.c.period);
+  const hasWater = hand.some(c=>c.sym==='H') && hand.some(c=>c.sym==='O');
+
+  // effective damage onto player right now (player's shield still active during cpu turn)
+  const effDmg = d => foe.noble ? 0 : Math.max(0, d - foe.shield);
+
+  let acted=false;
+
+  // 1) lethal
+  for(const a of attacks){ if(effDmg(a.dmg) >= foe.hp){ playCard('cpu', a.i); acted=true; break; } }
+
+  // 2) very low hp -> absolute defense if available
+  if(!acted && p.hp<=6 && nobles.length){ playCard('cpu', nobles[0].i); acted=true; }
+
+  // 3) low-ish hp + water combo -> heal
+  if(!acted && p.hp<=9 && hasWater){ playWater('cpu'); acted=true; }
+
+  // 4) low hp + a defense -> shield up
+  if(!acted && p.hp<=8 && defenses.length){ playCard('cpu', defenses[0].i); acted=true; }
+
+  // 5) best available attack
+  if(!acted && attacks.length){ playCard('cpu', attacks[0].i); acted=true; }
+
+  // 6) heal if hurt and can
+  if(!acted && p.hp<MAXHP-1 && hasWater){ playWater('cpu'); acted=true; }
+
+  // 7) defend
+  if(!acted && defenses.length){ playCard('cpu', defenses[0].i); acted=true; }
+  if(!acted && nobles.length){ playCard('cpu', nobles[0].i); acted=true; }
+
+  // 8) dump lowest card or pass
+  if(!acted){
+    if(hand.length){ playCard('cpu', 0); }
+    else log('<b class="cpu">상대</b>가 낼 카드가 없어 턴을 넘겼습니다.');
+  }
+
+  render();
+  if(state.over) return;
+  setTimeout(()=>{ busy=false; beginTurn('you', false); }, 750);
+}
+
+/* ===================== Win check ===================== */
+function checkOver(){
+  if(state.over) return;
+  if(state.you.hp<=0 || state.cpu.hp<=0){
+    state.over = true; busy = true;
+    setTimeout(()=>endGame(state.cpu.hp<=0), 700);
+  }
+}
+function endGame(playerWon){
+  render();
+  const big = document.getElementById('resultBig');
+  big.textContent = playerWon ? '⚛ 승리!' : '💥 패배';
+  big.className = 'big '+(playerWon?'win':'lose');
+  document.getElementById('resultMsg').textContent = playerWon
+    ? '원소의 힘을 완벽히 다뤘습니다. 상대의 HP를 0으로!'
+    : 'HP가 0이 되었습니다. 다시 도전해 보세요!';
+  document.getElementById('resultOverlay').classList.add('show');
+}
+
+/* ===================== Render ===================== */
+function render(){
+  // HP bars
+  setHp('you'); setHp('cpu');
+  // badges
+  document.getElementById('youBadges').innerHTML = badgeHtml(state.you);
+  document.getElementById('cpuBadges').innerHTML = badgeHtml(state.cpu);
+  // opponent hand (face down)
+  const oh = document.getElementById('cpuHand');
+  oh.innerHTML = state.cpu.hand.map(()=>'<div class="cardback">⚛</div>').join('');
+  // turn bar
+  const tb = document.getElementById('turnbar');
+  tb.innerHTML = state.over ? '' :
+    (state.turn==='you' ? '<span class="t you">▶ 당신의 차례</span>' : '<span class="t cpu">⏳ 상대(AI)가 생각 중…</span>');
+  // player hand
+  const yh = document.getElementById('youHand');
+  const myTurn = state.turn==='you' && !state.over && !busy;
+  yh.innerHTML = state.you.hand.map((c,i)=>cardHtml(c,i,myTurn)).join('');
+  // water button
+  const canWater = state.you.hand.some(c=>c.sym==='H') && state.you.hand.some(c=>c.sym==='O');
+  const wb = document.getElementById('waterBtn');
+  wb.disabled = !(myTurn && canWater);
+  document.getElementById('passBtn').disabled = !myTurn;
+  document.getElementById('handHint').textContent = myTurn ? '카드를 눌러 사용 (턴당 1장)' : '상대 턴 대기 중…';
+}
+function setHp(side){
+  const p = state[side];
+  const pct = Math.max(0, p.hp)/MAXHP*100;
+  document.getElementById(side+'Hp').style.width = pct+'%';
+  document.getElementById(side+'HpT').textContent = Math.max(0,p.hp)+' / '+MAXHP;
+}
+function badgeHtml(p){
+  let h='';
+  if(p.shield>0) h+='<span class="badge shield">🛡 방어막 '+p.shield+'</span>';
+  if(p.noble)    h+='<span class="badge noble">🛡 절대방어</span>';
+  h+='<span class="badge deck">🎴 덱 '+p.deck.length+'</span>';
+  return h;
+}
+function cardHtml(c,i,enabled){
+  const water = (c.sym==='H'||c.sym==='O') && enabled &&
+                state.you.hand.some(x=>x.sym==='H') && state.you.hand.some(x=>x.sym==='O');
+  return `<div class="card ${c.cat} ${enabled?'':'disabled'} ${water?'combo':''}" data-i="${i}" ${enabled?`onclick="onCardClick(${i})"`:''}>
+    <div class="z">${c.z}</div>
+    <div class="pd"><b>${c.period}</b>주기<br>${CATNAME[c.cat]}</div>
+    <div class="sym">${c.sym}</div>
+    <div class="nm">${c.nm}</div>
+    <div class="en">${c.en}</div>
+    <div class="fx">${fxText(c)}</div>
+  </div>`;
+}
+
+/* ===================== Log & FX ===================== */
+function log(html){
+  const box=document.getElementById('log');
+  const d=document.createElement('div'); d.className='line'; d.innerHTML=html;
+  box.appendChild(d); box.scrollTop=box.scrollHeight;
+}
+function clearLog(){ document.getElementById('log').innerHTML=''; }
+function panelEl(side){ return document.getElementById(side==='you'?'youPanel':'cpuPanel'); }
+function flash(side){ const el=panelEl(side); el.classList.remove('hitflash'); void el.offsetWidth; el.classList.add('hitflash'); }
+function shake(side){ const el=panelEl(side); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+function floatText(side,txt,color){
+  const el=panelEl(side); const r=el.getBoundingClientRect();
+  const f=document.createElement('div'); f.className='floater'; f.textContent=txt; f.style.color=color;
+  f.style.left=(r.left+r.width/2)+'px'; f.style.top=(r.top+18)+'px';
+  document.body.appendChild(f); setTimeout(()=>f.remove(),1000);
+}
+
+/* ===================== Wiring ===================== */
+document.getElementById('startBtn').onclick = ()=>{ document.getElementById('startOverlay').classList.remove('show'); newGame(); };
+document.getElementById('againBtn').onclick = ()=>{ document.getElementById('resultOverlay').classList.remove('show'); newGame(); };
+document.getElementById('resetBtn').onclick = ()=>{ document.getElementById('resultOverlay').classList.remove('show'); newGame(); };
+document.getElementById('rulesBtn').onclick = ()=>{ document.getElementById('startOverlay').classList.add('show'); };
+document.getElementById('waterBtn').onclick = onWater;
+document.getElementById('passBtn').onclick = onPass;
+</script>
+</body>
+</html>
